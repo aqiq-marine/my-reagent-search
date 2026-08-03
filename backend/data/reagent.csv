@@ -1,0 +1,21 @@
+cas,name,smiles,location,amount,supplier
+50-00-0,Formaldehyde,C=O,A-12,500 mL,TCI
+64-17-5,Ethanol,CCO,A-15,1 L,Kanto
+67-64-1,Acetone,CC(=O)C,B-01,2.5 L,Wako
+108-88-3,Toluene,Cc1ccccc1,B-02,1 L,TCI
+71-43-2,Benzene,c1ccccc1,B-03,500 mL,Sigma-Aldrich
+62-53-3,Aniline,c1ccccc1N,C-01,100 mL,TCI
+108-95-2,Phenol,c1ccccc1O,C-02,250 g,Wako
+100-52-7,Benzaldehyde,c1ccccc1C=O,C-03,500 mL,TCI
+65-85-0,Benzoic acid,c1ccccc1C(=O)O,C-04,100 g,Sigma-Aldrich
+103-90-2,Acetaminophen,CC(=O)Nc1ccc(O)cc1,D-01,50 g,TCI
+50-78-2,Aspirin,CC(=O)Oc1ccccc1C(=O)O,D-02,100 g,Wako
+58-08-2,Caffeine,CN1C(=O)N(C)c2ncn(C)c2C1=O,D-03,25 g,Sigma-Aldrich
+110-86-1,Pyridine,c1ccncc1,B-04,500 mL,Kanto
+98-95-3,Nitrobenzene,O=[N+]([O-])c1ccccc1,B-05,250 mL,TCI
+108-90-7,Chlorobenzene,Clc1ccccc1,B-06,1 L,Wako
+104-94-9,p-Anisidine,COc1ccc(N)cc1,A-12,25 g,TCI
+90-04-0,o-Anisidine,COc1ccccc1N,A-13,25 g,TCI
+536-90-3,m-Anisidine,COc1cc(N)ccc1,A-14,25 g,TCI
+109-99-9,Tetrahydrofuran,C1CCOC1,B-07,1 L,Kanto
+141-78-6,Ethyl acetate,CC(=O)OCC,B-08,2.5 L,Wako
