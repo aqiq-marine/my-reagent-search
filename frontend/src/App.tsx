@@ -27,7 +27,7 @@ interface SearchResponse {
 }
 
 // Backend API configuration
-const apiHost = import.meta.env.VITE_HOST || import.meta.env.HOST || 'http://localhost:8000';
+const apiHost = import.meta.env.VITE_HOST || 'http://localhost:8000';
 const api = axios.create({
   baseURL: apiHost,
 });
