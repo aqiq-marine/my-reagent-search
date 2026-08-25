@@ -55,5 +55,7 @@ app.include_router(reload.router, tags=["Management"])
 if __name__ == "__main__":
     import uvicorn
     # Start the server on port 8000
-    host = "0.0.0.0" if os.environ.get("RELEASE", "").lower() == "true" else "127.0.0.1"
-    uvicorn.run("backend.main:app", host=host, port=8000, reload=True)
+    host = "127.0.0.1"
+
+    hot_reload = os.environ.get("RELEASE", "").lower() != "true"
+    uvicorn.run("backend.main:app", host=host, port=8000, reload=hot_reload)
