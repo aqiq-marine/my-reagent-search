@@ -215,7 +215,6 @@ function ReagentSearchPortal() {
         <div className="header-meta">
           <span className="lab-badge">BIOTECH RESEARCH PORTAL</span>
           <h1>試薬検索システム</h1>
-          <p className="subtitle">React + FastAPI + RDKit SubstructLibrary Chemical Inventory Search</p>
         </div>
         <div className="header-actions">
           <button 
@@ -238,9 +237,8 @@ function ReagentSearchPortal() {
           <div className="card-header">
             <div className="header-left">
               <span className="step-num">1</span>
-              <h2>分子構造を描画または貼り付け</h2>
+              <h2>分子構造を描画</h2>
             </div>
-            <span className="tooltip-badge">ChemDraw等のSMILESをCtrl+Vで直接貼付け可能</span>
           </div>
           <div className="ketcher-wrapper">
             <Editor
@@ -372,7 +370,7 @@ function ReagentSearchPortal() {
             <div className="empty-panel card">
               <span className="empty-icon">🧪</span>
               <h3>検索が未実行です</h3>
-              <p>1. 上部エディタで構造式を描画するか、SMILES文字列をCtrl+Vで貼り付けてください。<br />2. 検索モードを選択し、「検索を実行」ボタンをクリックしてください。</p>
+              <p>1. 上部エディタで構造式を描画してください。<br />2. 検索モードを選択し、「検索を実行」ボタンをクリックしてください。</p>
             </div>
           ) : results.items.length === 0 ? (
             <div className="empty-panel card animate-fade-in">
