@@ -3,6 +3,7 @@ from rdkit import Chem
 from rdkit import DataStructs
 from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem.rdSubstructLibrary import SubstructLibrary
+from rdkit.Chem import rdchem
 
 from backend.models.compound import Compound
 from backend.repository.compound_repository import CompoundRepository
@@ -53,15 +54,22 @@ class SearchService:
         matched_indices = list(self.substruct_library.GetMatches(query_mol))
         return [self.compounds[idx] for idx in matched_indices]
 
-    def substructure_search(self, smarts: str) -> List[Compound]:
+    def substructure_search_by_molfile(self, molfile: str) -> List[Compound]:
         """
-        Performs substructure query matching using RDKit's SubstructLibrary.
+        Performs substructure query matching using RDKit's SubstructLibrary from a Molfile.
         """
-        query_mol = Chem.MolFromSmarts(smarts)
+        query_mol = Chem.MolFromMolBlock(molfile)
         if query_mol is None:
-            raise ValueError(f"Invalid SMARTS pattern: '{smarts}'")
-        
-        matched_indices = list(self.substruct_library.GetMatches(query_mol))
+            raise ValueError("Invalid Molfile provided.")
+    
+        params = rdchem.SubstructMatchParameters()
+        params.useChirality = True
+        params.specifiedStereoQueryMatchesUnspecified = True
+    
+        matched_indices = list(
+            self.substruct_library.GetMatches(query_mol, params)
+        )
+    
         return [self.compounds[idx] for idx in matched_indices]
 
     def exact_search(self, smiles: str) -> List[Compound]:
