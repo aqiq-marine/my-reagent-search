@@ -8,6 +8,7 @@ from rdkit.Chem import rdchem
 from backend.models.compound import Compound
 from backend.repository.compound_repository import CompoundRepository
 from backend.service.loader import Loader
+import logging
 
 class SearchService:
     """
@@ -47,20 +48,12 @@ class SearchService:
         """
         Performs substructure query matching using RDKit's SubstructLibrary from a Molfile.
         """
-        query_mol = Chem.MolFromMolBlock(molfile)
+        # Preserve explicit hydrogens from the Molfile because they can be
+        # part of the substructure query (e.g. aldehyde C-H).
+        query_mol = Chem.MolFromMolBlock(molfile, removeHs=False)
         if query_mol is None:
             raise ValueError("Invalid Molfile provided.")
-        
-        matched_indices = list(self.substruct_library.GetMatches(query_mol))
-        return [self.compounds[idx] for idx in matched_indices]
 
-    def substructure_search_by_molfile(self, molfile: str) -> List[Compound]:
-        """
-        Performs substructure query matching using RDKit's SubstructLibrary from a Molfile.
-        """
-        query_mol = Chem.MolFromMolBlock(molfile)
-        if query_mol is None:
-            raise ValueError("Invalid Molfile provided.")
     
         params = rdchem.SubstructMatchParameters()
         params.useChirality = True

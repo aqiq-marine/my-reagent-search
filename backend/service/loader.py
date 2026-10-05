@@ -76,7 +76,9 @@ class Loader:
             )
             
             compounds.append(compound)
-            # Add to SubstructLibrary
-            substruct_library.AddMol(mol)
+            # Index molecules with explicit hydrogens so queries containing
+            # explicit hydrogen atoms can participate in substructure matches.
+            search_mol = Chem.AddHs(mol)
+            substruct_library.AddMol(search_mol)
             
         return compounds, substruct_library
