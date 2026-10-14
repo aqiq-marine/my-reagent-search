@@ -35,6 +35,7 @@ interface SearchHistoryItem {
 }
 
 const HISTORY_STORAGE_KEY = 'reagent-search-history';
+const HISTORY_SIDEBAR_STORAGE_KEY = 'reagent-search-history-sidebar-open';
 
 // Backend API configuration
 const apiHost = import.meta.env.VITE_HOST || 'http://localhost:8000';
@@ -54,7 +55,6 @@ function ReagentSearchPortal() {
   
   // Results cache
   const [results, setResults] = useState<SearchResponse | null>(null);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const [history, setHistory] = useState<SearchHistoryItem[]>(() => {
     try {
       const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
@@ -63,6 +63,14 @@ function ReagentSearchPortal() {
       return [];
     }
   });
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(() => {
+    const stored = localStorage.getItem(HISTORY_SIDEBAR_STORAGE_KEY);
+    return stored === null ? true : stored === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem(HISTORY_SIDEBAR_STORAGE_KEY, String(isHistoryOpen));
+  }, [isHistoryOpen]);
 
   useEffect(() => {
     localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
