@@ -26,6 +26,16 @@ interface SearchResponse {
   items: ReagentItem[];
 }
 
+interface SearchHistoryItem {
+  id: string;
+  mode: 'substructure' | 'exact' | 'similarity';
+  molfile: string;
+  svg: string;
+  createdAt: number;
+}
+
+const HISTORY_STORAGE_KEY = 'reagent-search-history';
+
 // Backend API configuration
 const apiHost = import.meta.env.VITE_HOST || 'http://localhost:8000';
 const api = axios.create({
@@ -44,6 +54,19 @@ function ReagentSearchPortal() {
   
   // Results cache
   const [results, setResults] = useState<SearchResponse | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+  const [history, setHistory] = useState<SearchHistoryItem[]>(() => {
+    try {
+      const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+  }, [history]);
 
   // Initialize Ketcher global instance
   const onKetcherInit = (ketcherInstance: any) => {
@@ -119,22 +142,34 @@ function ReagentSearchPortal() {
         throw new Error("The structure editor is empty. Please draw or paste a chemical structure to search.");
       }
 
+      const molfile = await ketcher.getMolfile();
+      let svg = '';
+      try {
+        const ket = await ketcher.getKet();
+        const svgBlob = await ketcher.generateImage(ket, { outputFormat: 'svg' });
+        svg = await svgBlob.text();
+      } catch {
+        // SVG preview is optional; the molfile remains the source for restore.
+      }
+
       // API requests based on search mode
       if (searchMode === 'substructure') {
-        const molfile = await ketcher.getMolfile();
         console.log("DEBUG: Sending Molfile for substructure search:", molfile);
         const res = await api.post<SearchResponse>('/search/substructure', { molfile });
-        return res.data;
+        return { data: res.data, historyItem: { mode: searchMode, molfile, svg } };
       } else if (searchMode === 'exact') {
         const res = await api.post<SearchResponse>('/search/exact', { smiles: queryStr });
-        return res.data;
+        return { data: res.data, historyItem: { mode: searchMode, molfile, svg } };
       } else {
         const res = await api.post<SearchResponse>('/search/similarity', { smiles: queryStr, limit });
-        return res.data;
+        return { data: res.data, historyItem: { mode: searchMode, molfile, svg } };
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (response) => {
+      const data = response.data;
       setResults(data);
+      const item = { ...response.historyItem, id: crypto.randomUUID(), createdAt: Date.now() };
+      setHistory((current) => [item, ...current.filter((entry) => !(entry.mode === item.mode && entry.molfile === item.molfile))].slice(0, 20));
       if (data.count === 0) {
         showNotification('info', 'No matching reagents found in the database.');
       } else {
@@ -148,6 +183,18 @@ function ReagentSearchPortal() {
       setResults(null);
     }
   });
+
+  const restoreHistory = async (item: SearchHistoryItem) => {
+    if (!ketcher) return;
+    try {
+      await ketcher.setMolecule(item.molfile);
+      setSearchMode(item.mode);
+      setErrorMessage(null);
+      showNotification('info', '履歴の構造式をエディタに復元しました。');
+    } catch {
+      showNotification('error', '履歴の構造式を復元できませんでした。');
+    }
+  };
 
   // Database Reload Mutation
   const reloadMutation = useMutation({
@@ -194,7 +241,38 @@ function ReagentSearchPortal() {
   };
 
   return (
-    <div className="app-container">
+    <div className={`app-shell ${isHistoryOpen ? '' : 'history-collapsed'}`}>
+      <aside className="history-sidebar">
+        <div className="history-sidebar-header">
+          <div>
+            <span className="history-kicker">LOCAL STORAGE</span>
+            <h2>検索履歴</h2>
+          </div>
+          <button className="history-toggle" onClick={() => setIsHistoryOpen(false)} aria-label="履歴を閉じる">‹</button>
+        </div>
+        {history.length === 0 ? (
+          <p className="history-empty">検索を実行すると、<br />構造式がここに保存されます。</p>
+        ) : (
+          <div className="history-list">
+            {history.map((item, index) => (
+              <button className="history-item" key={item.id} onClick={() => restoreHistory(item)} title="クリックしてエディタに復元">
+                <span className="history-number">{String(index + 1).padStart(2, '0')}</span>
+                <span className="history-structure">
+                  {item.svg ? (
+                    <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(item.svg)}`} alt="構造式" />
+                  ) : (
+                    <span className="history-no-preview">構造式</span>
+                  )}
+                </span>
+                <span className="history-mode">{item.mode === 'substructure' ? '部分構造' : item.mode === 'exact' ? '完全一致' : '類似検索'}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="history-limit">最大20件 · 新しい順</p>
+      </aside>
+      {!isHistoryOpen && <button className="history-open" onClick={() => setIsHistoryOpen(true)} aria-label="履歴を開く">›<span>履歴</span></button>}
+      <div className="app-container">
       {/* Toast Notification */}
       {notification && (
         <div className={`notification-toast ${notification.type} animate-slide-in`}>
@@ -435,6 +513,7 @@ function ReagentSearchPortal() {
       <footer className="app-footer">
         <p>🔬 Chemical Reagent Search Engine &copy; 2026. Powered by RDKit SubstructLibrary.</p>
       </footer>
+      </div>
     </div>
   );
 }
