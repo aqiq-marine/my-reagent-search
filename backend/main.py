@@ -2,7 +2,8 @@ import sys
 import os
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # Ensure the parent directory is in sys.path to enable imports of the "backend" package
@@ -10,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from backend.repository.compound_repository import CompoundRepository
 from backend.service.search_service import SearchService
-from backend.api import substructure, exact, similarity, reload
+from backend.api import substructure, exact, similarity, reload, cas, smarts
 
 BASE_DIR = Path(__file__).resolve().parent
 CSV_PATH = Path(os.environ["REAGENT_DB"]) if os.environ.get("REAGENT_DB") else BASE_DIR / "data" / "reagent.csv"
@@ -37,6 +38,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+MAX_REQUEST_BODY_BYTES = 256 * 1024
+
+@app.middleware("http")
+async def limit_request_body_size(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > MAX_REQUEST_BODY_BYTES:
+                return JSONResponse(status_code=413, content={"detail": "Request body is too large"})
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header"})
+    return await call_next(request)
+
 # Configure CORS for integration with the Vite + React frontend
 app.add_middleware(
     CORSMiddleware,
@@ -49,6 +63,8 @@ app.add_middleware(
 # Register endpoints from routers
 app.include_router(substructure.router, prefix="/search", tags=["Search"])
 app.include_router(exact.router, prefix="/search", tags=["Search"])
+app.include_router(cas.router, prefix="/search", tags=["Search"])
+app.include_router(smarts.router, prefix="/search", tags=["Search"])
 app.include_router(similarity.router, prefix="/search", tags=["Search"])
 app.include_router(reload.router, tags=["Management"])
 

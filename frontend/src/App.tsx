@@ -28,7 +28,7 @@ interface SearchResponse {
 
 interface SearchHistoryItem {
   id: string;
-  mode: 'substructure' | 'exact' | 'similarity';
+  mode: 'substructure' | 'exact' | 'similarity' | 'smarts' | 'cas';
   molfile: string;
   svg: string;
   createdAt: number;
@@ -44,7 +44,10 @@ const api = axios.create({
 });
 
 function ReagentSearchPortal() {
+  const [searchTab, setSearchTab] = useState<'structure' | 'smarts' | 'cas'>('structure');
   const [searchMode, setSearchMode] = useState<'substructure' | 'exact' | 'similarity'>('substructure');
+  const [smartsQuery, setSmartsQuery] = useState('');
+  const [casQuery, setCasQuery] = useState('');
   const [limit, setLimit] = useState<number>(20);
   const [ketcher, setKetcher] = useState<any>(null);
   
@@ -130,17 +133,23 @@ function ReagentSearchPortal() {
   const searchMutation = useMutation({
     mutationFn: async () => {
       setErrorMessage(null);
+      if (searchTab === 'cas') {
+        if (!casQuery.trim()) throw new Error('CAS番号を入力してください。');
+        const res = await api.post<SearchResponse>('/search/cas', { cas: casQuery.trim() });
+        return { data: res.data, historyItem: { mode: searchMode, molfile: '', svg: '' } };
+      }
+      if (searchTab === 'smarts') {
+        if (!smartsQuery.trim()) throw new Error('SMARTS検索式を入力してください。');
+        const res = await api.post<SearchResponse>('/search/smarts', { smarts: smartsQuery.trim() });
+        return { data: res.data, historyItem: { mode: searchMode, molfile: '', svg: '' } };
+      }
       if (!ketcher) {
         throw new Error("Structure editor is loading. Please try again in a moment.");
       }
 
       let queryStr = "";
       try {
-        if (searchMode === 'substructure') {
-          queryStr = await ketcher.getSmarts();
-        } else {
-          queryStr = await ketcher.getSmiles();
-        }
+        queryStr = await ketcher.getSmiles();
       } catch (err: any) {
         throw new Error("Unable to extract structure from editor. Please draw a molecule first.");
       }
@@ -196,7 +205,12 @@ function ReagentSearchPortal() {
     if (!ketcher) return;
     try {
       await ketcher.setMolecule(item.molfile);
-      setSearchMode(item.mode);
+      if (item.mode === 'smarts' || item.mode === 'cas') {
+        setSearchTab(item.mode);
+      } else {
+        setSearchTab('structure');
+        setSearchMode(item.mode);
+      }
       setErrorMessage(null);
       showNotification('info', '履歴の構造式をエディタに復元しました。');
     } catch {
@@ -272,7 +286,7 @@ function ReagentSearchPortal() {
                     <span className="history-no-preview">構造式</span>
                   )}
                 </span>
-                <span className="history-mode">{item.mode === 'substructure' ? '部分構造' : item.mode === 'exact' ? '完全一致' : '類似検索'}</span>
+                <span className="history-mode">{item.mode === 'smarts' ? 'SMARTS検索' : item.mode === 'cas' ? 'CAS検索' : item.mode === 'substructure' ? '部分一致' : item.mode === 'exact' ? '完全一致' : '類似構造'}</span>
               </button>
             ))}
           </div>
@@ -318,6 +332,16 @@ function ReagentSearchPortal() {
       </header>
 
       <main className="app-main">
+        <div className="search-tabs top-search-tabs" role="tablist" aria-label="検索方法">
+          {(['structure', 'smarts', 'cas'] as const).map((tab) => (
+            <button key={tab} className={`search-tab-btn ${searchTab === tab ? 'active' : ''}`} onClick={() => setSearchTab(tab)} role="tab" aria-selected={searchTab === tab}>
+              <div className="tab-icon-wrapper">{tab === 'structure' ? '🧬' : tab === 'smarts' ? '🎯' : '🔎'}</div>
+              <div className="tab-text-wrapper"><h3>{tab === 'structure' ? '構造検索' : tab === 'smarts' ? 'SMARTS検索' : 'CAS検索'}</h3><p>{tab === 'structure' ? '構造を描画して検索' : tab === 'smarts' ? 'SMARTSパターンで検索' : 'CAS番号で検索'}</p></div>
+            </button>
+          ))}
+        </div>
+
+        {searchTab === 'structure' && <>
         {/* Ketcher drawing board */}
         <section className="editor-card card">
           <div className="card-header">
@@ -351,8 +375,8 @@ function ReagentSearchPortal() {
             >
               <div className="tab-icon-wrapper">🎯</div>
               <div className="tab-text-wrapper">
-                <h3>部分構造検索</h3>
-                <p>SMARTS matching</p>
+                <h3>部分一致</h3>
+                <p>Substructure matching</p>
               </div>
             </button>
 
@@ -362,7 +386,7 @@ function ReagentSearchPortal() {
             >
               <div className="tab-icon-wrapper">🔒</div>
               <div className="tab-text-wrapper">
-                <h3>完全一致検索</h3>
+                <h3>完全一致</h3>
                 <p>Canonical SMILES</p>
               </div>
             </button>
@@ -373,7 +397,7 @@ function ReagentSearchPortal() {
             >
               <div className="tab-icon-wrapper">📊</div>
               <div className="tab-text-wrapper">
-                <h3>類似検索</h3>
+                <h3>類似構造</h3>
                 <p>Tanimoto similarity</p>
               </div>
             </button>
@@ -418,6 +442,16 @@ function ReagentSearchPortal() {
             </button>
           </div>
         </section>
+        </>}
+
+        {searchTab === 'smarts' && <section className="config-card card standalone-query-card">
+          <div className="card-header"><div className="header-left"><span className="step-num">1</span><h2>SMARTS検索</h2></div></div>
+          <div className="form-container"><div className="form-group"><label htmlFor="smarts-query">SMARTS検索式</label><input id="smarts-query" className="text-input" value={smartsQuery} onChange={(e) => setSmartsQuery(e.target.value)} placeholder="例: c1ccccc1" /></div><button className={`btn btn-primary search-btn ${searchMutation.isPending ? 'loading' : ''}`} onClick={() => searchMutation.mutate()} disabled={searchMutation.isPending}>検索を実行</button></div>
+        </section>}
+        {searchTab === 'cas' && <section className="config-card card standalone-query-card">
+          <div className="card-header"><div className="header-left"><span className="step-num">1</span><h2>CAS検索</h2></div></div>
+          <div className="form-container"><div className="form-group"><label htmlFor="cas-query">CAS番号</label><input id="cas-query" className="text-input" value={casQuery} onChange={(e) => setCasQuery(e.target.value)} placeholder="例: 50-00-0" /></div><button className={`btn btn-primary search-btn ${searchMutation.isPending ? 'loading' : ''}`} onClick={() => searchMutation.mutate()} disabled={searchMutation.isPending}>検索を実行</button></div>
+        </section>}
 
         {/* Error Feedback */}
         {errorMessage && (

@@ -21,6 +21,7 @@ class SearchService:
         self.substruct_library: SubstructLibrary = SubstructLibrary()
         self.fingerprints = []
         self.exact_match_map: Dict[str, List[Compound]] = {}
+        self.cas_match_map: Dict[str, List[Compound]] = {}
         
         # Morgan fingerprint generator for similarity search query profiling
         self.fp_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
@@ -35,14 +36,17 @@ class SearchService:
         
         # Build exact match map (canonical_smiles -> list of compounds)
         exact_map: Dict[str, List[Compound]] = {}
+        cas_map: Dict[str, List[Compound]] = {}
         for compound in compounds:
             exact_map.setdefault(compound.canonical_smiles, []).append(compound)
+            cas_map.setdefault(compound.cas.strip(), []).append(compound)
             
         # Atomic switch of state to prevent partial/invalid states if an error occurs
         self.compounds = compounds
         self.substruct_library = substruct_lib
         self.fingerprints = [c.fingerprint for c in compounds]
         self.exact_match_map = exact_map
+        self.cas_match_map = cas_map
 
     def substructure_search_by_molfile(self, molfile: str) -> List[Compound]:
         """
@@ -65,6 +69,12 @@ class SearchService:
     
         return [self.compounds[idx] for idx in matched_indices]
 
+    def substructure_search_by_smarts(self, smarts: str) -> List[Compound]:
+        query_mol = Chem.MolFromSmarts(smarts)
+        if query_mol is None:
+            raise ValueError("Invalid SMARTS query")
+        return [self.compounds[idx] for idx in self.substruct_library.GetMatches(query_mol)]
+
     def exact_search(self, smiles: str) -> List[Compound]:
         """
         Performs exact match searching against cached canonical SMILES using O(1) dictionary lookups.
@@ -75,6 +85,9 @@ class SearchService:
         
         canonical_query = Chem.MolToSmiles(query_mol, canonical=True)
         return self.exact_match_map.get(canonical_query, [])
+
+    def cas_search(self, cas: str) -> List[Compound]:
+        return self.cas_match_map.get(cas.strip(), [])
 
     def similarity_search(self, smiles: str, limit: int = 20) -> List[Tuple[Compound, float]]:
         """
