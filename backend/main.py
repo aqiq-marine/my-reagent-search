@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.repository.compound_repository import CompoundRepository
 from backend.service.search_service import SearchService
 from backend.api import substructure, exact, similarity, reload, cas, smarts
+from backend.middleware import RequestLoggingMiddleware
 
 BASE_DIR = Path(__file__).resolve().parent
 CSV_PATH = Path(os.environ["REAGENT_DB"]) if os.environ.get("REAGENT_DB") else BASE_DIR / "data" / "reagent.csv"
@@ -37,6 +38,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+app.add_middleware(RequestLoggingMiddleware)
 
 MAX_REQUEST_BODY_BYTES = 256 * 1024
 
